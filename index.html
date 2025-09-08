@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Korean Vocabulary Quiz</title>
+    <link rel="icon" type="image/png" href="me.jpg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -171,7 +172,6 @@
             <div id="vocab-section" class="card space-y-6">
                 <div class="flex justify-between items-center mb-4">
                     <h1 class="text-3xl font-bold text-teal-300">JM Korean Helper</h1>
-                    <!---<div id="user-id-display" class="bg-gray-700 text-sm px-3 py-1 rounded-full text-gray-400">User ID: Loading...</div>--->
                 </div>
 
                 <p class="text-gray-400">Select a vocabulary category to start learning.</p>
@@ -378,42 +378,6 @@
                 console.error("Error during Firebase setup:", error);
             }
         }
-
-        // Firestore data listeners and handlers (Disabled for this version)
-        /*
-        function getVocabDocRef() {
-            if (!userId || !db) {
-                console.error("Firestore not ready. User ID or DB is null.");
-                return null;
-            }
-            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'userVocab', 'myVocab');
-            console.log("Attempting to access Firestore path:", docRef.path);
-            return docRef;
-        }
-
-        function listenToVocab() {
-            const vocabDocRef = getVocabDocRef();
-            if (vocabDocRef) {
-                onSnapshot(vocabDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        vocabList = docSnap.data().words || [];
-                        vocabInput.value = vocabList.join('\n');
-                        console.log("Vocabulary list updated from Firestore.");
-                    } else {
-                        vocabList = [];
-                        vocabInput.value = '';
-                        console.log("No vocabulary found for this user.");
-                    }
-                    displayVocabList();
-                }, (error) => {
-                    console.error("Error listening to Firestore document:", error);
-                });
-            } else {
-                console.error("Cannot listen to vocabulary changes. Firestore reference is invalid.");
-            }
-        }
-        */
-
         // UI Functions
         function displayVocabList() {
             vocabListUl.innerHTML = '';
