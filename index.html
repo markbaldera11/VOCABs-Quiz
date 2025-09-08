@@ -91,6 +91,71 @@
             margin: 0 auto 1.5rem;
             display: block;
         }
+        .chat-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            max-width: 90%;
+            height: 450px;
+            background-color: #2d3748;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        .chat-header {
+            background-color: #4a5568;
+            padding: 1rem;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-body {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .chat-message {
+            max-width: 80%;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+        }
+        .chat-message.user {
+            background-color: #38a169;
+            align-self: flex-end;
+        }
+        .chat-message.tutor {
+            background-color: #4a5568;
+            align-self: flex-start;
+        }
+        .chat-footer {
+            padding: 1rem;
+            border-bottom-left-radius: 1rem;
+            border-bottom-right-radius: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .tts-btn {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.25rem;
+            line-height: 1;
+            margin-left: 0.5rem;
+        }
+        .tts-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -98,25 +163,22 @@
         <div id="loader-overlay" class="fixed inset-0 z-50 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden">
             <div class="flex flex-col items-center p-8 bg-gray-800 rounded-lg shadow-xl">
                 <div class="loader"></div>
-                <p class="text-white mt-4">Generating your quiz...</p>
+                <p id="loader-text" class="text-white mt-4">Generating your quiz...</p>
             </div>
         </div>
 
         <div id="main-content" class="w-full">
             <div id="vocab-section" class="card space-y-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h1 class="text-3xl font-bold text-teal-300">John Mark Korean Vocab Questions Builder</h1>
+                    <h1 class="text-3xl font-bold text-teal-300">JM Korean Helper</h1>
                     <div id="user-id-display" class="bg-gray-700 text-sm px-3 py-1 rounded-full text-gray-400">User ID: Loading...</div>
                 </div>
 
-                <p class="text-gray-400">Enter Korean vocabulary words, one per line (e.g., "안녕하세요" or "사과").</p>
-                <textarea id="vocab-input" class="w-full h-40 p-4 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-y" placeholder="e.g.
-가다
-배우다
-책
-..."></textarea>
-                <div class="flex justify-end space-x-4">
-                    <button id="save-vocab-btn" class="btn">Save Vocab</button>
+                <p class="text-gray-400">Select a vocabulary category to start learning.</p>
+                <select id="category-select" class="w-full p-4 rounded-lg bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <option value="">-- Select a Category --</option>
+                </select>
+                <div class="flex flex-wrap justify-end space-x-2 mt-4">
                     <button id="start-quiz-btn" class="btn hidden">Start Quiz</button>
                 </div>
                 
@@ -125,6 +187,7 @@
                     <ul id="vocab-list" class="list-disc list-inside space-y-2 text-gray-300">
                         <li id="no-vocab-msg" class="text-gray-500 italic">No vocabulary added yet.</li>
                     </ul>
+                    <button id="pronounce-all-btn" class="btn bg-blue-600 hover:bg-blue-700 mt-4 hidden">🔊 Pronounce Entire List</button>
                 </div>
             </div>
 
@@ -135,8 +198,11 @@
                         Question <span id="current-question-num">1</span> of <span id="total-questions-num"></span>
                     </div>
                     <div class="bg-gray-700 p-6 rounded-lg">
+                        <div class="flex items-center justify-center">
+                            <p id="question-text" class="text-xl text-white text-center"></p>
+                            <button id="question-tts-btn" class="tts-btn" title="Pronounce question">🔊</button>
+                        </div>
                         <img id="question-image" class="question-image hidden" alt="Question-related image">
-                        <p id="question-text" class="text-xl text-white text-center"></p>
                     </div>
                     <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Options will be generated here -->
@@ -151,12 +217,49 @@
                 <div id="quiz-summary" class="hidden text-center space-y-4">
                     <h2 class="text-2xl font-bold text-teal-300">Quiz Complete!</h2>
                     <p id="summary-text" class="text-xl"></p>
-                    <button id="return-to-vocab-btn" class="btn">Return to Vocab</button>
-                    <button id="restart-quiz-btn" class="btn">Restart</button>
+                    <div id="detailed-results-container" class="mt-8 space-y-4 text-left"></div>
+                    <div id="study-plan-container" class="mt-4 p-4 rounded-lg bg-gray-800 hidden">
+                        <h3 class="text-lg font-bold text-teal-300 mb-2">Your Personalized Study Plan</h3>
+                        <p id="study-plan-text" class="text-gray-300"></p>
+                    </div>
+                    <div class="flex justify-center space-x-4 mt-4">
+                        <button id="restart-quiz-btn" class="btn">Restart</button>
+                        <button id="continue-learning-btn" class="btn hidden bg-teal-600 hover:bg-teal-700">✨ Continue Learning</button>
+                        <button id="get-study-plan-btn" class="btn bg-pink-600 hover:bg-pink-700 hidden">✨ Get Study Plan</button>
+                        <button id="return-to-vocab-btn" class="btn">Return to Vocab</button>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <button id="open-tutor-btn" class="btn bg-blue-600 hover:bg-blue-700 fixed bottom-5 right-5">✨ Open AI Tutor</button>
     </div>
+
+    <!-- AI Tutor Chatbox -->
+    <div id="tutor-chat-container" class="chat-container">
+        <div class="chat-header">
+            <h3 class="text-lg font-bold">AI Tutor</h3>
+            <button id="close-tutor-btn" class="text-gray-300 hover:text-white">&times;</button>
+        </div>
+        <div id="chat-body" class="chat-body">
+            <div class="chat-message tutor">Hello! I'm your AI Korean tutor. Ask me anything about the vocabulary words you've entered, or just type "challenge me" for a fun test!</div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chat-input" class="flex-grow p-2 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Ask a question...">
+            <button id="chat-send-btn" class="btn">Send</button>
+        </div>
+    </div>
+    
+    <!-- Image Modal -->
+    <div id="image-modal" class="fixed inset-0 z-[2000] bg-black bg-opacity-75 flex items-center justify-center hidden">
+        <div class="relative p-4 rounded-lg bg-gray-800 max-w-2xl w-full">
+            <button id="close-image-modal-btn" class="absolute top-2 right-2 text-white text-2xl font-bold">&times;</button>
+            <h3 id="image-modal-title" class="text-center text-xl font-bold mb-4"></h3>
+            <img id="modal-image" class="w-full rounded-lg" alt="Generated image">
+            <p id="image-error-text" class="text-center text-red-500 mt-4 hidden"></p>
+        </div>
+    </div>
+
 
     <!-- Firebase SDKs -->
     <script type="module">
@@ -168,28 +271,41 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
+        // TODO: Paste your Gemini API key here for local development.
+        const geminiApiKey = "AIzaSyABbyjdKVrx6MVbtMshC3BeLNAqTEKHUh4"; // This will be provided by the runtime environment
+
+        // Firebase service instances
         let app, auth, db;
         let userId = null;
+
         let vocabList = [];
         let quizQuestions = [];
         let currentQuestionIndex = 0;
         let score = 0;
         let isAnswered = false;
+        let userAnswers = []; // Array to store detailed user answers
+        let chatHistory = [];
 
-        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent`;
-        const geminiApiKey = ""; // This will be provided by the runtime environment
+        
+        const googleSheetCsvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRcnPTDqplxkiDDcKiZV3chp0BqxnhZuXcxoPSH-mmcFJlhlCAIZ7rCBa09KkaCPcgRKTggKOMv6m6s/pub?output=csv';
+        let allVocabData = {};
+
+        const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`;
+        const geminiTtsApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${geminiApiKey}`;
+        const geminiImgApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${geminiApiKey}`;
+
 
         // UI Elements
         const vocabSection = document.getElementById('vocab-section');
         const quizSection = document.getElementById('quiz-section');
-        const vocabInput = document.getElementById('vocab-input');
+        const categorySelect = document.getElementById('category-select');
         const vocabListUl = document.getElementById('vocab-list');
         const noVocabMsg = document.getElementById('no-vocab-msg');
-        const saveVocabBtn = document.getElementById('save-vocab-btn');
         const startQuizBtn = document.getElementById('start-quiz-btn');
         const loaderOverlay = document.getElementById('loader-overlay');
+        const loaderText = document.getElementById('loader-text');
         const userIdDisplay = document.getElementById('user-id-display');
+        const quizCard = document.getElementById('quiz-card');
         const questionTextElem = document.getElementById('question-text');
         const questionImageElem = document.getElementById('question-image');
         const optionsContainer = document.getElementById('options-container');
@@ -200,40 +316,56 @@
         const explanationText = document.getElementById('explanation-text');
         const quizSummary = document.getElementById('quiz-summary');
         const summaryText = document.getElementById('summary-text');
+        const detailedResultsContainer = document.getElementById('detailed-results-container');
         const returnToVocabBtn = document.getElementById('return-to-vocab-btn');
         const restartQuizBtn = document.getElementById('restart-quiz-btn');
+        const continueLearningBtn = document.getElementById('continue-learning-btn');
+        const getStudyPlanBtn = document.getElementById('get-study-plan-btn'); // New button
+        const studyPlanContainer = document.getElementById('study-plan-container'); // New container
+        const studyPlanText = document.getElementById('study-plan-text'); // New text element
+        const openTutorBtn = document.getElementById('open-tutor-btn');
+        const tutorChatContainer = document.getElementById('tutor-chat-container');
+        const closeTutorBtn = document.getElementById('close-tutor-btn');
+        const chatBody = document.getElementById('chat-body');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        const imageModal = document.getElementById('image-modal');
+        const closeImageModalBtn = document.getElementById('close-image-modal-btn');
+        const modalImage = document.getElementById('modal-image');
+        const imageModalTitle = document.getElementById('image-modal-title');
+        const imageErrorText = document.getElementById('image-error-text');
+        const questionTtsBtn = document.getElementById('question-tts-btn');
+        const pronounceAllBtn = document.getElementById('pronounce-all-btn');
 
-        // Initial setup and auth listener
+        // Initial setup and auth logic
         async function setupFirebase() {
             try {
                 if (Object.keys(firebaseConfig).length > 0) {
                     app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
                     db = getFirestore(app);
-                    console.log("Firebase initialized.");
                     
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            userId = user.uid;
-                            userIdDisplay.textContent = `User ID: ${userId}`;
-                            console.log("User authenticated:", userId);
-                            listenToVocab();
-                        } else {
-                            userId = null;
-                            console.log("No user signed in. Signing in anonymously...");
-                            await signInAnonymously(auth);
-                        }
-                    });
+                    console.log("Firebase initialized. Awaiting authentication state.");
 
                     if (initialAuthToken) {
-                        try {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } catch (error) {
-                            console.error("Error signing in with custom token:", error);
-                            await signInAnonymously(auth);
-                        }
+                        await signInWithCustomToken(auth, initialAuthToken).catch(err => {
+                            console.error("Custom token sign-in failed:", err);
+                        });
                     } else {
-                        await signInAnonymously(auth);
+                        await signInAnonymously(auth).catch(err => {
+                            console.error("Anonymous sign-in failed:", err);
+                        });
+                    }
+                    
+                    const user = auth.currentUser;
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = `User ID: ${userId}`;
+                        console.log("User authenticated. Setting up Firestore listener.");
+                        // listenToVocab(); // Disabling Firestore load for now
+                    } else {
+                        console.error("Authentication failed. Cannot access Firestore.");
+                        userIdDisplay.textContent = `User ID: N/A`;
                     }
                 } else {
                     console.error("Firebase config is missing. Cannot initialize Firestore.");
@@ -247,14 +379,16 @@
             }
         }
 
-        // Firestore data listeners and handlers
+        // Firestore data listeners and handlers (Disabled for this version)
+        /*
         function getVocabDocRef() {
             if (!userId || !db) {
                 console.error("Firestore not ready. User ID or DB is null.");
                 return null;
             }
-            // Updated path to use a public collection that is writable by authenticated users
-            return doc(db, 'artifacts', appId, 'public', 'data', 'vocabulary', userId);
+            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'userVocab', 'myVocab');
+            console.log("Attempting to access Firestore path:", docRef.path);
+            return docRef;
         }
 
         function listenToVocab() {
@@ -274,23 +408,36 @@
                 }, (error) => {
                     console.error("Error listening to Firestore document:", error);
                 });
+            } else {
+                console.error("Cannot listen to vocabulary changes. Firestore reference is invalid.");
             }
         }
+        */
 
         // UI Functions
         function displayVocabList() {
             vocabListUl.innerHTML = '';
             if (vocabList.length > 0) {
                 noVocabMsg.classList.add('hidden');
-                vocabList.forEach(word => {
+                pronounceAllBtn.classList.remove('hidden');
+                vocabList.forEach(item => {
                     const li = document.createElement('li');
-                    li.textContent = word;
+                    li.classList.add('flex', 'items-center', 'justify-between', 'py-1');
+                    li.innerHTML = `
+                        <span>${item.korean} / ${item.english}</span>
+                        <div>
+                            <button class="btn bg-teal-600 hover:bg-teal-700 text-sm py-1 px-2 vocab-image-btn" data-word="${item.korean}">
+                                ✨ Generate Image
+                            </button>
+                        </div>
+                    `;
                     vocabListUl.appendChild(li);
                 });
                 startQuizBtn.classList.remove('hidden');
             } else {
                 noVocabMsg.classList.remove('hidden');
                 startQuizBtn.classList.add('hidden');
+                pronounceAllBtn.classList.add('hidden');
             }
         }
 
@@ -305,43 +452,17 @@
         }
 
         // Event listeners
-        saveVocabBtn.addEventListener('click', async () => {
-            const words = vocabInput.value.split('\n').map(word => word.trim()).filter(word => word.length > 0);
-            if (words.length === 0) {
-                // Replaced alert with console.log for a smoother user experience
-                console.log("Please enter some vocabulary words.");
-                return;
-            }
-            
-            vocabList = words;
-            displayVocabList();
-
-            if (db && userId) {
-                const vocabDocRef = getVocabDocRef();
-                if (vocabDocRef) {
-                    try {
-                        await setDoc(vocabDocRef, { words });
-                        console.log("Vocabulary saved to Firestore.");
-                    } catch (error) {
-                        console.error("Error saving vocabulary to Firestore:", error);
-                    }
-                }
-            } else {
-                localStorage.setItem('vocabList', JSON.stringify(vocabList));
-                console.log("Vocabulary saved to local storage (Firestore not available).");
-            }
-        });
-
+        
+        // Add an input event listener to the textarea to show/hide the start quiz button
         startQuizBtn.addEventListener('click', async () => {
             if (vocabList.length === 0) {
-                // Replaced alert with a message in the UI or console.log
-                console.log("Please enter some vocabulary words first.");
-                return;
+                 console.log("Please select a category to start the quiz.");
+                 return;
             }
             
-            showLoader();
+            showLoader("Generating your quiz...");
             try {
-                const prompt = `Generate a multiple-choice quiz about Korean vocabulary in the style of an EPS/DMW exam. For each of the following words: ${vocabList.join(', ')}. Create a question that is a mix of English and Korean, with 4 options in Korean. The response should be a JSON array of objects, where each object has a 'question' (the question text), 'options' (an array of 4 Korean words/phrases), 'correctAnswer' (the correct Korean word/phrase), 'explanation' (a brief English explanation for the correct answer), and an optional 'imageUrl' field. The 'imageUrl' should be a placeholder image URL from https://placehold.co/400x300/1e293b/fff?text= (followed by a relevant English word for the image). The correct answer must be one of the provided words. The 'imageUrl' field should be present for about half of the questions.`;
+                const prompt = `Generate a multiple-choice quiz about Korean vocabulary in the style of an EPS/DMW exam. For each of the following words: ${vocabList.map(v => v.korean).join(', ')}. Create a question that is a mix of English and Korean, with 4 options in Korean. The response should be a JSON array of objects, where each object has a 'question' (the question text), 'options' (an an array of 4 Korean words/phrases), 'correctAnswer' (the correct Korean word/phrase), 'explanation' (a brief English explanation for the correct answer), and an optional 'imageUrl' field. The 'imageUrl' should be a placeholder image URL from https://placehold.co/400x300/1e293b/fff?text= (followed by a relevant English word for the image). The correct answer must be one of the provided words. The 'imageUrl' field should be present for about half of the questions.`;
                 
                 const payload = {
                     contents: [{ parts: [{ text: prompt }] }],
@@ -375,21 +496,31 @@
                     body: JSON.stringify(payload)
                 });
                 
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        console.error("Error 401: Unauthorized. The API key is likely missing or invalid. Please check the configuration.");
+                    }
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
                 const result = await response.json();
                 
                 if (result.candidates && result.candidates.length > 0) {
                     const jsonContent = result.candidates[0].content.parts[0].text;
-                    quizQuestions = JSON.parse(jsonContent);
-                    startQuiz();
+                    try {
+                        quizQuestions = JSON.parse(jsonContent);
+                        startQuiz();
+                    } catch (parseError) {
+                        console.error("Error parsing JSON response:", parseError);
+                        console.log("Failed to parse quiz data. The generated content may be invalid.");
+                    }
                 } else {
                     console.error("API response did not contain a valid quiz.");
-                    // Replaced alert with a console log
                     console.log("Failed to generate quiz. Please try again.");
                 }
 
             } catch (error) {
                 console.error("Error generating quiz:", error);
-                // Replaced alert with a console log
                 console.log("An error occurred while generating the quiz. Please check your network connection and try again.");
             } finally {
                 hideLoader();
@@ -409,9 +540,164 @@
             startQuiz();
         });
 
+        continueLearningBtn.addEventListener('click', async () => {
+            const incorrectWords = userAnswers.filter(ans => !ans.isCorrect).map(ans => ans.correct);
+            if (incorrectWords.length > 0) {
+                showLoader("Generating a new quiz...");
+                try {
+                    const prompt = `Generate a multiple-choice quiz about Korean vocabulary in the style of an EPS/DMW exam. For each of the following words: ${incorrectWords.join(', ')}. Create a question that is a mix of English and Korean, with 4 options in Korean. The response should be a JSON array of objects, where each object has a 'question' (the question text), 'options' (an array of 4 Korean words/phrases), 'correctAnswer' (the correct Korean word/phrase), 'explanation' (a brief English explanation for the correct answer), and an optional 'imageUrl' field. The 'imageUrl' should be a placeholder image URL from https://placehold.co/400x300/1e293b/fff?text= (followed by a relevant English word for the image). The correct answer must be one of the provided words. The 'imageUrl' field should be present for about half of the questions.`;
+                    
+                    const payload = {
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        "question": { "type": "STRING" },
+                                        "options": {
+                                            "type": "ARRAY",
+                                            "items": { "type": "STRING" },
+                                            "minItems": 4,
+                                            "maxItems": 4
+                                        },
+                                        "correctAnswer": { "type": "STRING" },
+                                        "explanation": { "type": "STRING" },
+                                        "imageUrl": { "type": "STRING" }
+                                    },
+                                    "propertyOrdering": ["question", "options", "correctAnswer", "explanation", "imageUrl"]
+                                }
+                            }
+                        }
+                    };
+                    
+                    const response = await fetch(geminiApiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0) {
+                        const jsonContent = result.candidates[0].content.parts[0].text;
+                        quizQuestions = JSON.parse(jsonContent);
+                        startQuiz();
+                    } else {
+                        console.error("API response did not contain a valid quiz.");
+                    }
+                } catch (error) {
+                    console.error("Error generating new quiz:", error);
+                } finally {
+                    hideLoader();
+                }
+            } else {
+                showVocabSection();
+            }
+        });
+
+        // New "Get Study Plan" functionality
+        getStudyPlanBtn.addEventListener('click', async () => {
+            const incorrectWords = userAnswers.filter(ans => !ans.isCorrect).map(ans => ans.correct);
+            if (incorrectWords.length === 0) {
+                studyPlanText.textContent = "Great job! You got all the questions right, so no study plan is needed.";
+                studyPlanContainer.classList.remove('hidden');
+                return;
+            }
+
+            showLoader("Generating your personalized study plan...");
+            try {
+                const prompt = `Based on a quiz where I incorrectly answered the following Korean words: ${incorrectWords.join(', ')}. Generate a personalized study plan with a few practice sentences and memory tips. Respond as a single paragraph.`;
+                
+                const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                
+                const response = await fetch(geminiApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                let planText = "Sorry, I couldn't generate a study plan. Please try again.";
+                if (result.candidates && result.candidates.length > 0) {
+                    planText = result.candidates[0].content.parts[0].text;
+                }
+                
+                studyPlanText.textContent = planText;
+                studyPlanContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error generating study plan:", error);
+                studyPlanText.textContent = "An error occurred while generating your study plan.";
+                studyPlanContainer.classList.remove('hidden');
+            } finally {
+                hideLoader();
+            }
+        });
+
         returnToVocabBtn.addEventListener('click', () => {
             showVocabSection();
             quizSummary.classList.add('hidden');
+        });
+
+        // Listeners for new TTS buttons in vocab list
+        pronounceAllBtn.addEventListener('click', async () => {
+            pronounceAllBtn.disabled = true;
+            for (const item of vocabList) {
+                await speakText(item.korean);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Short pause
+            }
+            pronounceAllBtn.disabled = false;
+        });
+
+        vocabListUl.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('vocab-image-btn')) {
+                const word = e.target.dataset.word;
+                const button = e.target;
+                button.disabled = true;
+                const originalText = button.textContent;
+                button.textContent = 'Generating...';
+                
+                showLoader(`Generating an image for "${word}"...`);
+                imageModalTitle.textContent = word;
+                modalImage.src = '';
+                imageErrorText.classList.add('hidden');
+
+                try {
+                    const prompt = `A simple, clear, and beautiful representation of the Korean word "${word}". The style should be like a minimalistic drawing, perhaps with a touch of whimsy.`;
+                    const payload = { instances: { prompt }, parameters: { sampleCount: 1 } };
+                    
+                    const response = await fetch(geminiImgApiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                        const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                        modalImage.src = imageUrl;
+                        imageModal.classList.remove('hidden');
+                    } else {
+                        imageErrorText.textContent = "Could not generate image. Please try again.";
+                        imageErrorText.classList.remove('hidden');
+                        imageModal.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error("Error generating image:", error);
+                    imageErrorText.textContent = "An error occurred while generating the image.";
+                    imageErrorText.classList.remove('hidden');
+                    imageModal.classList.remove('hidden');
+                } finally {
+                    button.disabled = false;
+                    button.textContent = originalText;
+                    hideLoader();
+                }
+            }
         });
 
         // Quiz Logic
@@ -421,9 +707,12 @@
                 return;
             }
             showQuizSection();
+            quizCard.classList.remove('hidden');
             quizSummary.classList.add('hidden');
+            studyPlanContainer.classList.add('hidden');
             currentQuestionIndex = 0;
             score = 0;
+            userAnswers = [];
             totalQuestionsNum.textContent = quizQuestions.length;
             displayQuestion();
         }
@@ -438,20 +727,24 @@
             nextQuestionBtn.classList.add('hidden');
             isAnswered = false;
 
-            // Handle image display
             if (q.imageUrl) {
                 questionImageElem.src = q.imageUrl;
                 questionImageElem.classList.remove('hidden');
             } else {
                 questionImageElem.classList.add('hidden');
-                questionImageElem.src = ''; // Clear image src
+                questionImageElem.src = '';
             }
+            
+            questionTtsBtn.onclick = () => speakText(q.question);
 
             q.options.forEach(option => {
                 const btn = document.createElement('button');
                 btn.textContent = option;
                 btn.classList.add('option-btn', 'w-full', 'text-left');
-                btn.addEventListener('click', () => handleAnswer(btn, option, q.correctAnswer, q.explanation));
+                btn.addEventListener('click', (e) => {
+                    handleAnswer(e.target, option, q.correctAnswer, q.explanation);
+                });
+                btn.addEventListener('mouseenter', () => speakText(option));
                 optionsContainer.appendChild(btn);
             });
         }
@@ -463,7 +756,15 @@
             const allOptions = optionsContainer.querySelectorAll('.option-btn');
             allOptions.forEach(btn => btn.disabled = true);
 
-            if (selectedOption === correctAnswer) {
+            const isCorrect = selectedOption === correctAnswer;
+            userAnswers.push({
+                question: quizQuestions[currentQuestionIndex].question,
+                selected: selectedOption,
+                correct: correctAnswer,
+                isCorrect: isCorrect
+            });
+
+            if (isCorrect) {
                 score++;
                 selectedBtn.classList.add('correct');
                 quizFeedback.textContent = "Correct!";
@@ -474,7 +775,6 @@
                 quizFeedback.textContent = `Incorrect. The correct answer was "${correctAnswer}".`;
                 quizFeedback.classList.remove('text-green-500');
                 quizFeedback.classList.add('text-red-500');
-                // Highlight the correct answer
                 allOptions.forEach(btn => {
                     if (btn.textContent === correctAnswer) {
                         btn.classList.add('correct');
@@ -489,27 +789,325 @@
             if (currentQuestionIndex < quizQuestions.length - 1) {
                 nextQuestionBtn.classList.remove('hidden');
             } else {
-                nextQuestionBtn.classList.add('hidden');
-                showQuizSummary();
+                showQuizSummary(); 
             }
         }
 
         function showQuizSummary() {
-            quizSection.classList.add('hidden');
+            quizCard.classList.add('hidden');
             quizSummary.classList.remove('hidden');
             summaryText.textContent = `You scored ${score} out of ${quizQuestions.length}!`;
+            detailedResultsContainer.innerHTML = '';
+            studyPlanContainer.classList.add('hidden');
+
+            let hasIncorrectAnswers = false;
+            userAnswers.forEach((result, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.classList.add('p-4', 'rounded-lg', result.isCorrect ? 'bg-green-900' : 'bg-red-900');
+                
+                const questionTitle = document.createElement('h3');
+                questionTitle.classList.add('font-bold', 'text-lg', 'mb-2');
+                questionTitle.textContent = `Question ${index + 1}:`;
+                resultItem.appendChild(questionTitle);
+                
+                const questionText = document.createElement('p');
+                questionText.textContent = result.question;
+                questionText.classList.add('text-gray-200', 'mb-2');
+                resultItem.appendChild(questionText);
+                
+                const yourAnswerText = document.createElement('p');
+                yourAnswerText.innerHTML = `Your Answer: <span class="font-semibold ${result.isCorrect ? 'text-green-300' : 'text-red-300'}">${result.selected}</span>`;
+                resultItem.appendChild(yourAnswerText);
+
+                if (!result.isCorrect) {
+                    hasIncorrectAnswers = true;
+                    const correctAnswerText = document.createElement('p');
+                    correctAnswerText.innerHTML = `Correct Answer: <span class="font-semibold text-green-300">${result.correct}</span>`;
+                    resultItem.appendChild(correctAnswerText);
+
+                    const pronounceBtn = document.createElement('button');
+                    pronounceBtn.textContent = '🔊 Listen to Correct Answer';
+                    pronounceBtn.classList.add('btn', 'bg-blue-600', 'hover:bg-blue-700', 'mt-2', 'text-sm');
+                    pronounceBtn.addEventListener('click', () => speakText(result.correct));
+                    resultItem.appendChild(pronounceBtn);
+                }
+                
+                detailedResultsContainer.appendChild(resultItem);
+            });
+
+            if (hasIncorrectAnswers) {
+                continueLearningBtn.classList.remove('hidden');
+                getStudyPlanBtn.classList.remove('hidden'); // Show study plan button
+            } else {
+                continueLearningBtn.classList.add('hidden');
+                getStudyPlanBtn.classList.add('hidden'); // Hide study plan button
+            }
         }
 
-        function showLoader() {
+        // --- Gemini TTS API Helper Functions ---
+        // Helper function to convert Base64 to ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // Helper function to convert PCM audio to WAV format.
+        // This function was fixed to correctly handle 16-bit signed PCM data.
+        function pcmToWav(pcm16, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const pcmDataLength = pcm16.length * 2; // Data length in bytes (each Int16 is 2 bytes)
+            const byteRate = numChannels * bitsPerSample / 8 * sampleRate;
+            const blockAlign = numChannels * bitsPerSample / 8;
+            const buffer = new ArrayBuffer(44 + pcmDataLength);
+            const view = new DataView(buffer);
+
+            // Write the RIFF header
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmDataLength, true);
+            writeString(view, 8, 'WAVE');
+
+            // Write the fmt chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // AudioFormat 1 = PCM
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+
+            // Write the data chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmDataLength, true);
+
+            // Write the PCM data itself using setInt16
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(44 + i * 2, pcm16[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        async function speakText(text) {
+            try {
+                const payload = {
+                    contents: [{
+                        parts: [{ text: text }]
+                    }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: { voiceName: "Kore" }
+                            }
+                        }
+                    },
+                    model: "gemini-2.5-flash-preview-tts"
+                };
+
+                console.log("TTS payload:", payload);
+
+                const response = await fetch(geminiTtsApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                console.log("TTS API Response:", result);
+                
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                    console.log("Successfully received audio data from TTS API.");
+                    const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                    const pcmData = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                } else {
+                    console.error("TTS API response did not contain valid audio data.");
+                }
+            } catch (error) {
+                console.error("Error with TTS API:", error);
+            }
+        }
+
+        function showLoader(text) {
+            loaderText.textContent = text;
             loaderOverlay.classList.remove('hidden');
         }
 
         function hideLoader() {
             loaderOverlay.classList.add('hidden');
         }
+        
+        // --- Gemini Image Generation ---
+        closeImageModalBtn.addEventListener('click', () => {
+            imageModal.classList.add('hidden');
+        });
 
+        // --- Gemini AI Tutor Chat ---
+        openTutorBtn.addEventListener('click', () => {
+            tutorChatContainer.style.display = 'flex';
+        });
+
+        closeTutorBtn.addEventListener('click', () => {
+            tutorChatContainer.style.display = 'none';
+        });
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                chatSendBtn.click();
+            }
+        });
+
+        chatSendBtn.addEventListener('click', () => {
+            const userMessage = chatInput.value.trim();
+            if (userMessage.length > 0) {
+                appendChatMessage(userMessage, 'user');
+                chatInput.value = '';
+                sendMessageToGeminiChat(userMessage);
+            }
+        });
+        
+        function appendChatMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = text;
+            messageDiv.classList.add('chat-message', sender);
+            chatBody.appendChild(messageDiv);
+            chatBody.scrollTop = chatBody.scrollHeight; // Auto-scroll to the bottom
+        }
+
+        async function sendMessageToGeminiChat(userMessage) {
+            chatSendBtn.disabled = true;
+            chatInput.disabled = true;
+            
+            // Add user message to history
+            chatHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+
+            const tutorMessageDiv = document.createElement('div');
+            tutorMessageDiv.classList.add('chat-message', 'tutor');
+            tutorMessageDiv.innerHTML = '<div class="loader-small"></div>';
+            chatBody.appendChild(tutorMessageDiv);
+            chatBody.scrollTop = chatBody.scrollHeight;
+            
+            const systemInstruction = `You are a helpful AI tutor for learning Korean vocabulary. The user's current vocabulary list is: ${vocabList.map(v => `${v.korean} (${v.english})`).join(', ')}. Answer questions about these words, provide examples, or offer related information. Keep your responses concise and focused on the vocabulary.`;
+            
+            try {
+                const payload = {
+                    contents: chatHistory,
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                };
+
+                const response = await fetch(geminiApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                let geminiText = "Sorry, I couldn't get a response. Please try again.";
+                if (result.candidates && result.candidates.length > 0) {
+                    geminiText = result.candidates[0].content.parts[0].text;
+                }
+                
+                // Update message in UI
+                tutorMessageDiv.textContent = geminiText;
+
+                // Add Gemini's response to history
+                chatHistory.push({ role: 'model', parts: [{ text: geminiText }] });
+
+            } catch (error) {
+                console.error("Error with AI tutor:", error);
+                tutorMessageDiv.textContent = "An error occurred. Please try again.";
+            } finally {
+                chatSendBtn.disabled = false;
+                chatInput.disabled = false;
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }
+        }
+        
+        async function fetchAndParseVocab() {
+            showLoader("Fetching vocabulary lists...");
+            try {
+                const response = await fetch(googleSheetCsvUrl);
+                const csvText = await response.text();
+                // Normalize line endings before splitting
+                const rows = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').slice(1);
+
+                rows.forEach(row => {
+                    // Handle potential commas within fields if they are quoted (basic handling)
+                    const columns = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+                    if (columns.length >= 3) {
+                        const korean = columns[0].replace(/"/g, '').trim();
+                        const english = columns[1].replace(/"/g, '').trim();
+                        const category = columns[2].replace(/"/g, '').trim();
+
+                        if (category && korean && english) {
+                            if (!allVocabData[category]) {
+                                allVocabData[category] = [];
+                            }
+                            allVocabData[category].push({ korean, english });
+                        }
+                    }
+                });
+
+                populateCategoryDropdown();
+            } catch (error) {
+                console.error("Error fetching or parsing vocabulary CSV:", error);
+                // You might want to display an error message to the user here
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function populateCategoryDropdown() {
+            const categories = Object.keys(allVocabData);
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            });
+        }
+
+        function handleCategoryChange() {
+            const selectedCategory = categorySelect.value;
+            if (selectedCategory && allVocabData[selectedCategory]) {
+                vocabList = allVocabData[selectedCategory];
+                displayVocabList();
+            } else {
+                vocabList = [];
+                displayVocabList(); // This will clear the list and show the "No vocab" message
+            }
+        }
+
+        categorySelect.addEventListener('change', handleCategoryChange);
+        
         // Initialize the app on window load
-        window.onload = setupFirebase;
+        window.onload = async () => {
+            await setupFirebase();
+            await fetchAndParseVocab();
+        };
     </script>
 </body>
 </html>
